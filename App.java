@@ -1,12 +1,12 @@
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Calendar;
 
 public class App {
-    public static void main(String[] args) {
-        int NUM_QUARTOS = 12;
-        String[] nomes = new String[NUM_QUARTOS];
-        String[] dtEntrada = new String[NUM_QUARTOS];
-        String[] dtSaida = new String[NUM_QUARTOS];
-        carregarReservasDoArquivo(nomes, dtEntrada, dtSaida);
+    private static final int NUM_QUARTOS = 12;
+    public static void main(String[] args) throws ParseException {
+        ArrayList<Reserva> reservas = new ArrayList<>();
+        //carregarReservasDoArquivo(reservas);
         String menu = "===== Sistema de Reservas de Hotel =====\n"+
                 "1. Cadastrar reserva\n"+
                 "2. Consultar reserva\n"+
@@ -17,27 +17,27 @@ public class App {
         int opcao = Entrada.leiaInt(menu);
         while (opcao != 6) {
             if (opcao == 1) {
-                cadastrarReserva(nomes, dtEntrada, dtSaida);
+                cadastrarReserva(reservas);
             } else if (opcao == 2) {
-                consultarReserva(nomes, dtEntrada, dtSaida);
+                consultarReserva(reservas);
             } else if (opcao == 3) {
-                atualizarReserva(nomes, dtEntrada, dtSaida);
+                atualizarReserva(reservas);
             } else if (opcao == 4) {
-                cancelarReserva(nomes, dtEntrada, dtSaida);
+                cancelarReserva(reservas);
             } else if (opcao == 5) {
-                exibirRelatorio(nomes);
+                exibirRelatorio(reservas);
             } else {
                 Entrada.leiaString("Opção inválida. Tente novamente.");
             }
             opcao = Entrada.leiaInt(menu);
         }
 
-        salvarReservasNoArquivo(nomes, dtEntrada, dtSaida);
+        //salvarReservasNoArquivo(reservas);
         System.exit(0);
     }
 
-    public static void cadastrarReserva(String[] nomes, String[] dtEntrada, String[] dtSaida) {
-        if (quantidadeQuartosDisponiveis(nomes) == 0) {
+    public static void cadastrarReserva(ArrayList<Reserva> reservas) throws ParseException {
+        if (NUM_QUARTOS-reservas.size() == 0) {
             Entrada.leiaString("Desculpe, não há quartos disponíveis.");
             return;
         }
@@ -53,10 +53,10 @@ public class App {
         int numeroQuarto = Entrada.leiaInt("===== Cadastro de Reserva (2/4)=====\n" +
                 "Digite o número do quarto: ");
 
-        if (verificarQuartoInvalido(numeroQuarto,nomes)) {
+        if (verificarQuartoInvalido(numeroQuarto)) {
             return;
         }
-        if (verificarQuartoOcupado(numeroQuarto, nomes)) {
+        if (verificarQuartoOcupado(reservas,numeroQuarto)) {
             Entrada.leiaString("O quarto não está disponível");
             return;
         }
@@ -90,135 +90,117 @@ public class App {
             }
             dataValida = true;
         }
-        nomes[numeroQuarto - 1] = nomeHospede;
-        dtEntrada[numeroQuarto - 1] = inputEntrada;
-        dtSaida[numeroQuarto - 1] = inputSaida;
 
+        Reserva tmpReserv = new Reserva(numeroQuarto,nomeHospede,inputEntrada,inputSaida);
+        reservas.add(tmpReserv);
 
         Entrada.leiaString("Reserva cadastrada com sucesso.");
     }
 
-    public static void consultarReserva(String[] nomes, String[] entrada, String[] saida) {
+    public static void consultarReserva(ArrayList<Reserva> reservas) {
         int numeroQuarto = Entrada.leiaInt("===== Consulta de Reserva =====\n" +
                 "Digite o número do quarto: ");
 
-        if (verificarQuartoInvalido(numeroQuarto,nomes)) {
+        if (verificarQuartoInvalido(numeroQuarto)){
             return;
         }
-
-        if (nomes[numeroQuarto - 1] != null) {
-            Entrada.leiaString("Hóspede: " + nomes[numeroQuarto - 1] + "\n" +
-                    "Quarto: " + (numeroQuarto) + "\n" +
-                    "Entrada: " + entrada[numeroQuarto - 1] + "\n" +
-                    "Saida: " + saida[numeroQuarto - 1]);
-        } else {
+        if (!verificarQuartoOcupado(reservas,numeroQuarto)){
             Entrada.leiaString("Quarto vazio.");
+        } else {
+            Entrada.leiaString(reservas.get(buscaReservaPorQuarto(reservas,numeroQuarto)).toString());
         }
     }
 
-    public static void atualizarReserva(String[] nomes, String[] dtEntrada, String[] dtSaida) {
+    public static void atualizarReserva(ArrayList<Reserva> reservas) throws ParseException {
         int numeroQuarto = Entrada.leiaInt("===== Atualização de Reserva =====\n" +
                 "Digite o número do quarto: ");
 
-        if (verificarQuartoInvalido(numeroQuarto,nomes)) {
+        if (verificarQuartoInvalido(numeroQuarto)){
             return;
         }
-        if (!verificarQuartoOcupado(numeroQuarto,nomes)) {
+        if (!verificarQuartoOcupado(reservas,numeroQuarto)) {
             Entrada.leiaString("Não há reserva para este quarto");
             return;
         }
 
-        if (nomes[numeroQuarto - 1] != null) {
-            String nomeHospede = Entrada.leiaString("===== Cadastro de Reserva (1/3)=====\n" +
-                    "Digite o nome do hóspede: ");
+        Reserva reserva = reservas.get(buscaReservaPorQuarto(reservas,numeroQuarto));
 
-            if (nomeHospede.equals("null")) {
-                Entrada.leiaString("Nome inválido!");
-                return;
-            }
+        String nomeHospede = Entrada.leiaString("===== Cadastro de Reserva (1/3)=====\n" +
+                "Digite o nome do hóspede: ");
 
-            String inputEntrada = Entrada.leiaString("===== Cadastro de Reserva (2/3)=====\n" +
-                    "Digite a data de entrada: ", dtEntrada[numeroQuarto - 1]);
-
-            while (dataInvalida(inputEntrada)){
-                inputEntrada = Entrada.leiaString("===== Cadastro de Reserva (2/3)=====\n" +
-                        "Data inválida! " +
-                        "Digite a data de entrada: ");
-            }
-
-            String inputSaida = Entrada.leiaString("===== Cadastro de Reserva (3/3)=====\n" +
-                    "Digite a data de saída: ", dtSaida[numeroQuarto - 1]);
-
-            boolean dataValida = false;
-
-            while (!dataValida){
-                if (dataInvalida(inputSaida)) {
-                    inputSaida = Entrada.leiaString("===== Cadastro de Reserva (4/4)=====\n" +
-                            "Data inválida! " +
-                            "Digite a data de saída: ");
-                    continue;
-                }
-                if (saidaInvalida(inputEntrada,inputSaida)){
-                    inputSaida = Entrada.leiaString("===== Cadastro de Reserva (4/4)=====\n" +
-                            "Data anterior a entrada! " +
-                            "Digite a data de saída: ");
-                    continue;
-                }
-                dataValida = true;
-            }
-
-            dtEntrada[numeroQuarto - 1] = inputEntrada;
-            dtSaida[numeroQuarto - 1] = inputSaida;
-            nomes[numeroQuarto - 1] = nomeHospede;
-
-            Entrada.leiaString("Reserva atualizada com sucesso.");
-        } else {
-            Entrada.leiaString("Quarto vazio. Não é possível atualizar a reserva.");
-        }
-    }
-
-    public static void cancelarReserva(String[] nomes, String[] dtEntrada, String[] dtSaida) {
-        int numeroQuarto = Entrada.leiaInt("===== Cancelamento de Reserva =====\n" +
-                "Digite o número do quarto: ");
-        if (verificarQuartoInvalido(numeroQuarto,nomes)) {
+        if (nomeHospede.equals("null")) {
+            Entrada.leiaString("Nome inválido!");
             return;
         }
-        if (nomes[numeroQuarto - 1] != null) {
-            nomes[numeroQuarto - 1] = null;
-            dtEntrada[numeroQuarto - 1] = null;
-            dtSaida[numeroQuarto - 1] = null;
+
+        String inputEntrada = Entrada.leiaString("===== Cadastro de Reserva (2/3)=====\n" +
+                "Digite a data de entrada: ", reserva.getDataEntradaString());
+
+        while (dataInvalida(inputEntrada)) {
+            inputEntrada = Entrada.leiaString("===== Cadastro de Reserva (2/3)=====\n" +
+                    "Data inválida! " +
+                    "Digite a data de entrada: ");
+        }
+
+        String inputSaida = Entrada.leiaString("===== Cadastro de Reserva (3/3)=====\n" +
+                "Digite a data de saída: ", reserva.getDataSaidaString());
+
+        boolean dataValida = false;
+
+        while (!dataValida) {
+            if (dataInvalida(inputSaida)) {
+                inputSaida = Entrada.leiaString("===== Cadastro de Reserva (4/4)=====\n" +
+                        "Data inválida! " +
+                        "Digite a data de saída: ");
+                continue;
+            }
+            if (saidaInvalida(inputEntrada, inputSaida)) {
+                inputSaida = Entrada.leiaString("===== Cadastro de Reserva (4/4)=====\n" +
+                        "Data anterior a entrada! " +
+                        "Digite a data de saída: ");
+                continue;
+            }
+            dataValida = true;
+        }
+        reserva.setDataEntrada(inputEntrada);
+        reserva.setDataSaida(inputSaida);
+        reserva.setHospede(nomeHospede);
+        reservas.add(numeroQuarto-1,reserva);
+
+        Entrada.leiaString("Reserva atualizada com sucesso.");
+    }
+
+    public static void cancelarReserva(ArrayList<Reserva> reservas) {
+        int numeroQuarto = Entrada.leiaInt("===== Cancelamento de Reserva =====\n" +
+                "Digite o número do quarto: ");
+        if (verificarQuartoInvalido(numeroQuarto)) {
+            return;
+        }
+        if (verificarQuartoOcupado(reservas,numeroQuarto)) {
+            reservas.remove(buscaReservaPorQuarto(reservas,numeroQuarto));
             Entrada.leiaString("Reserva cancelada com sucesso.");
         } else {
             Entrada.leiaString("Quarto vazio. Não é possível cancelar a reserva.");
         }
     }
 
-    public static void exibirRelatorio(String[] nomes) {
+    public static void exibirRelatorio(ArrayList<Reserva> array) {
         StringBuilder vagos = new StringBuilder();
         StringBuilder ocupados = new StringBuilder();
-        for (int i=0;i<nomes.length;i++){
-            if (nomes[i] != null)
+        for (int i=0;i<array.size();i++) {
+            if (array.get(i)!=null){
                 ocupados.append(i + 1).append(" ");
-            else
+            } else {
                 vagos.append(i + 1).append(" ");
+            }
         }
         Entrada.leiaString("===== Relatório de Reservas =====\n" +
                 "Quartos locados: " + ocupados+ "\n" +
                 "Quartos livres: " + vagos);
     }
 
-    public static int quantidadeQuartosDisponiveis(String[] nomes) {
-        int contador = 0;
-        for (String nome : nomes) {
-            if (nome == null || nome.equals("null")) {
-                contador++;
-            }
-        }
-        return contador;
-    }
-
-    public static boolean verificarQuartoInvalido(int numeroQuarto, String[] nomes) {
-        boolean bool = (numeroQuarto <= 0 || numeroQuarto > nomes.length);
+    public static boolean verificarQuartoInvalido(int numeroQuarto) {
+        boolean bool = (numeroQuarto <= 0 || numeroQuarto > NUM_QUARTOS);
         if (bool) {
             Entrada.leiaString("Número de quarto inválido.");
             return true;
@@ -226,8 +208,17 @@ public class App {
         return false;
     }
 
-    public static boolean verificarQuartoOcupado(int numeroQuarto, String[] nomes) {
-        return (nomes[numeroQuarto - 1] != null);
+    public static boolean verificarQuartoOcupado(ArrayList<Reserva> array,int numeroQuarto) {
+        return (buscaReservaPorQuarto(array,numeroQuarto) != -1);
+    }
+
+    public static int buscaReservaPorQuarto(ArrayList<Reserva> array,int quarto){
+        for (Reserva reserva : array) {
+            if (reserva.getQuarto() == quarto) {
+                return array.indexOf(reserva);
+            }
+        }
+        return -1;
     }
 
     public static boolean saidaInvalida(String entrada, String saida) {
@@ -270,59 +261,53 @@ public class App {
         return !ok;
     }
 
-    public static void carregarReservasDoArquivo(String[] nomes, String[] dtEntrada, String[] dtSaida) {
+    public static void carregarReservasDoArquivo(ArrayList<Reserva> array) throws ParseException {
         Arquivo arquivo = new Arquivo("reservas.txt");
 
         if (arquivo.abrirLeitura()) {
             String linha = arquivo.lerLinha();
+            String str = "";
             while (linha != null) {
-                String[] arrNome = linha.split(";")[0].split(",");
-                String[] arrEnt = linha.split(";")[1].split(",");
-                String[] arrSai = linha.split(";")[2].split(",");
-                for (int i=0; i<nomes.length;i++) {
-                    if (arrNome[i].equals("null"))
-                        nomes[i] = null;
-                    else
-                        nomes[i] = arrNome[i];
-                }
-                for (int i=0; i<dtEntrada.length;i++) {
-                    if (arrEnt[i].equals("null"))
-                        arrEnt[i] = null;
-                    else
-                        dtEntrada[i] = arrEnt[i];
-                }
-                for (int i=0; i<dtSaida.length;i++) {
-                    if (arrSai[i].equals("null"))
-                        dtSaida[i] = null;
-                    else
-                        dtSaida[i] = arrSai[i];
-                }
+                str = linha;
                 linha = arquivo.lerLinha();
+            }
+            String[] arrNome = str.split(";")[0].split(",");
+            String[] arrQuar = str.split(";")[1].split(",");
+            String[] arrEnt = str.split(";")[2].split(",");
+            String[] arrSai = str.split(";")[3].split(",");
+            for (int i=0; i<NUM_QUARTOS;i++) {
+                int quarto;
+                try {
+                    quarto = Integer.parseInt(arrQuar[i]);
+                } catch (NumberFormatException ex){
+                    quarto = i;
+                }
+                if (quarto==i && !arrNome[i].equals("null")){
+                    Reserva reserv = new Reserva(quarto,arrNome[i-1],arrEnt[i-1],arrSai[i-1]);
+                    array.add(reserv);
+                } else {
+                    array.add(null);
+                }
             }
         }
         arquivo.fecharArquivo();
     }
 
-    public static void salvarReservasNoArquivo(String[] nomes, String[] entrada, String[] saida) {
+    public static void salvarReservasNoArquivo(ArrayList<Reserva> array) {
         Arquivo arquivo = new Arquivo("reservas.txt");
         String str = "";
-        StringBuilder aux = new StringBuilder();
+        StringBuilder strNomes = new StringBuilder();
+        StringBuilder strQuartos = new StringBuilder();
+        StringBuilder strEntradas = new StringBuilder();
+        StringBuilder strSaidas = new StringBuilder();
         if (arquivo.abrirEscrita()) {
-            for (String i : nomes) {
-                aux.append(i).append(",");
+            for (Reserva reserva : array) {
+                strNomes.append(reserva.getHospede()).append(",");
+                strQuartos.append(reserva.getHospede()).append(",");
+                strEntradas.append(reserva.getHospede()).append(",");
+                strSaidas.append(reserva.getHospede()).append(",");
             }
-            str = str+aux.substring(0,aux.length()-1)+";";
-            aux = new StringBuilder();
-            for (String i : entrada) {
-                aux.append(i).append(",");
-            }
-            str = str+aux.substring(0,aux.length()-1)+";";
-            aux = new StringBuilder();
-            for (String i : saida) {
-                aux.append(i).append(",");
-            }
-            str = str+aux.substring(0,aux.length()-1);
-            //aux = new StringBuilder();
+            str = strNomes.substring(0,strNomes.length()-1)+strQuartos.substring(0,strQuartos.length()-1)+strEntradas.substring(0,strEntradas.length()-1)+strSaidas.substring(0,strSaidas.length()-1);
         }
         arquivo.escreverLinha(str);
         arquivo.fecharArquivo();
